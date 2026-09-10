@@ -26,4 +26,5 @@ except ValidationError as exc:
         + " — copy .env.example to .env and fill it in."
     ) from None    # `from None` so the original (value-bearing) error is dropped
 
-print(Settings().dict()["databricks_api_token"].get_secret_value())
+if __name__ == "__main__":
+    print(settings.dict())
