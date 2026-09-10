@@ -216,3 +216,16 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Logs
+logs/
+*.log
+
+# dbt packages
+dbt_packages/
+
+# dbt target directory
+target/
+
+# astro
+.astro/
