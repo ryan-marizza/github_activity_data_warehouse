@@ -1,0 +1,1 @@
+from ghwh import config
