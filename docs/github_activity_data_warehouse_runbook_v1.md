@@ -230,8 +230,8 @@ gh-warehouse/
 - You can state, from your own measurement and not from this document, the event count and byte size of one GH Archive hour. **DONE**
 - `docs/DATA_CONTRACT.md` contains a table of event types with counts, and one full example record for each of the four PR-related types. **DONE**
 - You have written down the exact JSON paths for the six fields listed above. **DONE**
-- You have committed to a specific 7-day window with specific dates. 
-- Request an hour you expect not to exist (a date in the future) and observe the HTTP status code. You will need to handle this in Step 13.
+- You have committed to a specific 7-day window with specific dates.  **DONE**
+- Request an hour you expect not to exist (a date in the future) and observe the HTTP status code. You will need to handle this in Step 13. **DONE**
 
 **Done when:** you could explain to someone else what a GH Archive record looks like without opening a file.
 

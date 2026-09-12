@@ -1,3 +1,5 @@
+# General info
+
 Compressed Size (sample avg): 35.667712 MB
 Uncompressed Size (sample avg): 194.313571 MB
 Number of events per hour (sample avg): 147015.20
@@ -24,12 +26,16 @@ One hour of data had the following event counts
  'DiscussionEvent': 35, 
  'PublicEvent': 85}
 
-Top level key union:
+Dates for analysis: 9/1/2026-9/7/2026 inclusive
+
+Note: hitting a date in the future gives a status code of 404.
+
+# Top level key union:
 {'payload', 'repo', 'type', 'actor', 'org', 'created_at', 'id', 'public'}
-Top level key intersection:
+# Top level key intersection:
 {'payload', 'type', 'repo', 'actor', 'created_at', 'id', 'public'} (same, but missing 'org')
 
-Type to payload keys mapping:
+# Type to payload keys mapping:
 IssueCommentEvent: {'comment', 'issue', 'action'}
 PullRequestEvent: {'pull_request', 'assignee', 'labels', 'number', 'assignees', 'label', 'action'}
 PullRequestReviewCommentEvent: {'comment', 'pull_request', 'action'}
@@ -47,7 +53,7 @@ MemberEvent: {'member', 'action'}
 GollumEvent: {'pages'}
 PublicEvent: set()
 
-Skew Analysis:
+# Skew Analysis:
 Repo ID: 1108982410, Count: 367366, Fraction: 0.0036
 Repo ID: 1117703620, Count: 267134, Fraction: 0.0026
 Repo ID: 1122140563, Count: 256209, Fraction: 0.0025
@@ -76,7 +82,7 @@ Repo ID: 529127781, Count: 68193, Fraction: 0.0007
 
 Top 1% total count: 45944317, Fraction: 0.4494
 
-Important JSON paths:
+# Important JSON paths:
 PR Number: event[payload][pull_request][number]
 PR Creation Timestamp: event[created_at]
 PR Author Login: event[actor][login]
@@ -84,7 +90,7 @@ Review submission timestamp: event[payload][review][submitted_at]
 Review state: event[payload][review][state]
 Repository Full Name: event[repo][name]
 
-Example PullRequestEvent:
+# Example PullRequestEvent:
 
 {
   "id": "5567787002",
@@ -134,7 +140,7 @@ Example PullRequestEvent:
 }
 
 
-Example PullRequestReviewEvent:
+# Example PullRequestReviewEvent:
 
 {
   "id": "5567787013",
@@ -230,7 +236,7 @@ Example PullRequestReviewEvent:
 }
 
 
-Example PullRequestReviewCommentEvent:
+# Example PullRequestReviewCommentEvent:
 
 {
   "id": "5567786996",
@@ -341,7 +347,7 @@ Example PullRequestReviewCommentEvent:
 }
 
 
-Example IssueCommentEvent:
+# Example IssueCommentEvent:
 
 {
   "id": "5567786997",
@@ -485,3 +491,62 @@ Example IssueCommentEvent:
     "avatar_url": "https://avatars.githubusercontent.com/u/195190198?"
   }
 }
+
+# Table Descriptions
+
+## Raw Volume Layout:
+Grain: One file per hour.
+Paths like events/YYYY-MM-DD/HH/YYYY-MM-DD-H.json.gz
+Directory structure gets 0 padded hours, while filepaths remain identical to those from GH Archive.
+
+Absent from the path: No run id, no ingestion timestamp, no attempt number, no version suffix.
+
+## bronze.events
+Grain: One row per GitHub event:
+Columns:
+  Promoted Scalars for filtering and partitioning:
+    - event_id (string)
+    - event_type (string)
+    - created_at (timestamp)
+    - actor_id (bigint)
+    - actor_login (string)
+    - repo_id (bigint)
+    - repo_name (string)
+    - org_id (bigint, nullable)
+    - event_date (date)
+    - event_hour (tinyint)
+The payload (as a variant - unparsed) (max size = 128 MiB, 16 MiB on Databricks Runtime 17.1 or below):
+    - payload (variant)    
+Audit Columns:
+    - _source_file (string) # The full path to the source file for the row
+    - _source_url (string) 
+    - _ingested_at (timestamp)
+    - _run_id (string) # The airflow run identifier
+Partition by event date
+Write mode: Overwrite-by-predicate on (event_date, event_hour)
+Bronze does not deduplicate and does not filter. It's a replayable transcription of the raw files plus lineage.
+
+## silver.events
+Grain: One row per distinct event
+Deduplicated on event_id
+-bronze but typed and validated (keep the payload as a variant)
+
+
+## silver.pull_request_events
+Grain: One row per PR event
+Deduplicated on event_id
+payload fields extracted into typed columns:
+  - action (string)
+  - number (bigint)
+  - pull_request (variant) NO - EXTRACT THE INFO WE NEED AS TYPED COLUMNS NOT NESTED
+  - base (variant)
+  - public (Boolean)
+  - created_at (timestamp)
+
+
+## silver.pull_request_review_events
+Grain: One row per PR review event
+Deduplicated on event_id
+  - review (variant)NO - EXTRACT THE INFO WE NEED AS TYPED COLUMNS NOT NESTED
+  - pull_request (variant)NO - EXTRACT THE INFO WE NEED AS TYPED COLUMNS NOT NESTED
+  - action (string)
