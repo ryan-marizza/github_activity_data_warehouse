@@ -1,10 +1,3 @@
-"""Download an hour of GH Archive and inspect the decompressed events.
-
-GH Archive serves gzipped JSON Lines: one JSON object per line, NOT a single
-JSON array. The server sends no Content-Encoding header, so requests hands back
-raw gzip bytes -- we decompress them ourselves.
-"""
-
 import gzip
 import json
 

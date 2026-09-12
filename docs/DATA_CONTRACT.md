@@ -76,6 +76,14 @@ Repo ID: 529127781, Count: 68193, Fraction: 0.0007
 
 Top 1% total count: 45944317, Fraction: 0.4494
 
+Important JSON paths:
+PR Number: event[payload][pull_request][number]
+PR Creation Timestamp: event[created_at]
+PR Author Login: event[actor][login]
+Review submission timestamp: event[payload][review][submitted_at]
+Review state: event[payload][review][state]
+Repository Full Name: event[repo][name]
+
 Example PullRequestEvent:
 
 {

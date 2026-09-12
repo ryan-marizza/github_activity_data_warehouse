@@ -185,16 +185,16 @@ gh-warehouse/
 3. Generate a **personal access token** (User Settings → Developer → Access tokens). Set a short-ish expiry and diary a renewal reminder; an expired token is a classic 3 a.m. pipeline failure. **DONE**
 4. Install the **Databricks CLI** (the Go one — verify by checking that its version reports `v0.2x`, not `0.17`). Configure a profile with your workspace host and token. The CLI stores this in `~/.databrickscfg`. **DONE**
 5. Create `.env.example` in the repo listing every variable name your project will need with dummy values: workspace host, token, catalog name, volume path, SQL warehouse HTTP path. Create a real `.env` locally, and confirm it is git-ignored. **DONE**
-6. In `ghwh/config.py`, define a settings object that reads those variables from the environment and **fails loudly at import time if a required one is missing**. Never default a credential to an empty string. **<u>TODO</u>**
+6. In `ghwh/config.py`, define a settings object that reads those variables from the environment and **fails loudly at import time if a required one is missing**. Never default a credential to an empty string. **<u>DONE</u>**
 7. Create a SQL warehouse if one does not exist. On Free Edition it will be 2X-Small; that is your only option. Note its **HTTP path** — dbt needs it in Step 16. **DONE**
 
 ### Verify
 
 - Use the CLI to list catalogs in your workspace. You should see the default catalogs. **DONE**
 - Use the CLI to list your workspace's current user. This confirms the token is valid, not merely present. **DONE**
-- From Python, use the Databricks SDK with credentials from `ghwh.config` to list clusters or warehouses. This proves your config layer works, not just the CLI's.
-- Deliberately unset one required environment variable and import `ghwh.config`. It must raise a clear error naming the missing variable.
-- Run `git log -p` and search for your token string. Zero hits.
+- From Python, use the Databricks SDK with credentials from `ghwh.config` to list clusters or warehouses. This proves your config layer works, not just the CLI's. **DONE**
+- Deliberately unset one required environment variable and import `ghwh.config`. It must raise a clear error naming the missing variable. **DONE**
+- Run `git log -p` and search for your token string. Zero hits.**DONE**
 
 **Gotchas**
 
@@ -211,26 +211,26 @@ gh-warehouse/
 
 ### Implementation
 
-1. Learn the URL format: files live at `https://data.gharchive.org/` with the pattern `YYYY-MM-DD-H.json.gz`. **The hour is not zero-padded** — hour 3 is `-3.json.gz`, not `-03.json.gz`. This trips up nearly everyone. Hours run 0–23 in UTC.
-2. Download exactly one hour by hand with `curl` or your browser. Record its compressed size.
-3. Decompress it and inspect it in a notebook with plain Python — no Spark, no pandas at first. It is newline-delimited JSON (one complete JSON object per line), not a JSON array.
+1. Learn the URL format: files live at `https://data.gharchive.org/` with the pattern `YYYY-MM-DD-H.json.gz`. **The hour is not zero-padded** — hour 3 is `-3.json.gz`, not `-03.json.gz`. This trips up nearly everyone. Hours run 0–23 in UTC. **DONE**
+2. Download exactly one hour by hand with `curl` or your browser. Record its compressed size. **DONE**
+3. Decompress it and inspect it in a notebook with plain Python — no Spark, no pandas at first. It is newline-delimited JSON (one complete JSON object per line), not a JSON array. **DONE**
 4. Answer these questions and write the answers into `docs/DATA_CONTRACT.md`:
-   - How many lines (events) are in one hour?
-   - What is the uncompressed size? What is the compression ratio?
-   - What are the distinct values of the top-level `type` field, and their counts? You should see on the order of 15 event types.
-   - What top-level keys does *every* record have? Compare the key sets of the first 10,000 records and take the intersection and the union. The difference between those two sets is your schema drift.
-   - For each event type, what keys appear inside `payload`? These differ wildly by type — that is the central modeling problem of this project.
-   - What are the top 20 repositories by event count? Compute what share of all events the top 1% of repos account for. This is your skew, and it will shape every join you write later.
-5. Focus on the event types you need for the review-latency question: `PullRequestEvent`, `PullRequestReviewEvent`, `PullRequestReviewCommentEvent`, `IssueCommentEvent`. For each, dump one full example record, pretty-printed, into `docs/DATA_CONTRACT.md`. Note the exact JSON path to: PR number, PR creation timestamp, PR author login, review submission timestamp, review state, and repository full name.
-6. **Capacity plan.** Multiply your single-file compressed size by 168 (7 days × 24 hours). Compare that to (a) your laptop's free disk and (b) what you are willing to store in Databricks. If the number is uncomfortable, pick an older 7-day window — GH Archive files from earlier years are substantially smaller — but stay after 2015-01-01. Write your chosen window into the README and commit to it.
-7. Note the `created_at` field is UTC ISO-8601, and that event `id` is a numeric string, not an integer.
+   - How many lines (events) are in one hour? **DONE**
+   - What is the uncompressed size? What is the compression ratio? **DONE**
+   - What are the distinct values of the top-level `type` field, and their counts? You should see on the order of 15 event types. **DONE**
+   - What top-level keys does *every* record have? Compare the key sets of the first 10,000 records and take the intersection and the union. The difference between those two sets is your schema drift. **DONE**
+   - For each event type, what keys appear inside `payload`? These differ wildly by type — that is the central modeling problem of this project. **DONE**
+   - What are the top 20 repositories by event count? Compute what share of all events the top 1% of repos account for. This is your skew, and it will shape every join you write later. **DONE**
+5. Focus on the event types you need for the review-latency question: `PullRequestEvent`, `PullRequestReviewEvent`, `PullRequestReviewCommentEvent`, `IssueCommentEvent`. For each, dump one full example record, pretty-printed, into `docs/DATA_CONTRACT.md`. Note the exact JSON path to: PR number, PR creation timestamp, PR author login, review submission timestamp, review state, and repository full name. **DONE**
+6. **Capacity plan.** Multiply your single-file compressed size by 168 (7 days × 24 hours). Compare that to (a) your laptop's free disk and (b) what you are willing to store in Databricks. If the number is uncomfortable, pick an older 7-day window — GH Archive files from earlier years are substantially smaller — but stay after 2015-01-01. Write your chosen window into the README and commit to it. **DONE**
+7. Note the `created_at` field is UTC ISO-8601, and that event `id` is a numeric string, not an integer. **DONE**
 
 ### Verify
 
-- You can state, from your own measurement and not from this document, the event count and byte size of one GH Archive hour.
-- `docs/DATA_CONTRACT.md` contains a table of event types with counts, and one full example record for each of the four PR-related types.
-- You have written down the exact JSON paths for the six fields listed above.
-- You have committed to a specific 7-day window with specific dates.
+- You can state, from your own measurement and not from this document, the event count and byte size of one GH Archive hour. **DONE**
+- `docs/DATA_CONTRACT.md` contains a table of event types with counts, and one full example record for each of the four PR-related types. **DONE**
+- You have written down the exact JSON paths for the six fields listed above. **DONE**
+- You have committed to a specific 7-day window with specific dates. 
 - Request an hour you expect not to exist (a date in the future) and observe the HTTP status code. You will need to handle this in Step 13.
 
 **Done when:** you could explain to someone else what a GH Archive record looks like without opening a file.
